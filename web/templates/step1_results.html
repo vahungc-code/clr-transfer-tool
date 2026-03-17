@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}CLR Transfer Tool — ITK Analysis{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <!-- Breadcrumb -->
+        <ul class="breadcrumb-dark">
+            <li><a href="{{ url_for('index') }}">Upload</a></li>
+            <li class="active">ITK Analysis</li>
+        </ul>
+
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fw-800" style="font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: 0.25rem;">
+                    ITK Analysis
+                </h2>
+                <p class="text-muted-custom mb-0" style="font-size: 0.85rem;">
+                    <i class="bi bi-file-earmark-spreadsheet text-accent"></i> {{ clr_filename }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Step indicator -->
+        <div class="d-flex justify-content-center mb-4">
+            <div class="step-indicator">
+                <div class="step-item completed">
+                    <div class="step-number"><i class="bi bi-check"></i></div>
+                    <div class="step-label">Upload CLR</div>
+                </div>
+                <div class="step-line active"></div>
+                <div class="step-item active">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Upload Templates</div>
+                </div>
+                <div class="step-line"></div>
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Download</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value text-accent">{{ total_products }}</div>
+                    <div class="stat-label">Total Products</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--info);">{{ total_parents }}</div>
+                    <div class="stat-label">Parents</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--warning);">{{ total_children }}</div>
+                    <div class="stat-label">Children</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--success);">{{ total_standalone }}</div>
+                    <div class="stat-label">Standalone</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ITK Table -->
+        <div class="card-dark mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="mb-0 font-display" style="font-size: 1rem;">
+                    <i class="bi bi-tags text-accent me-2"></i>Unique Item Type Keywords
+                </h5>
+                <span class="badge-severity badge-info">{{ itk_summary | length }} ITKs found</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>Item Type Keyword</th>
+                            <th style="width: 100px; text-align: right;">Products</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for itk, count in itk_summary %}
+                        <tr>
+                            <td class="text-dim">{{ loop.index }}</td>
+                            <td>
+                                <code style="font-size: 0.8rem;">{{ itk }}</code>
+                            </td>
+                            <td style="text-align: right;">
+                                <span class="font-display fw-800">{{ count }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Instructions callout -->
+        <div class="card-dark p-4 mb-4" style="border-left: 3px solid var(--info);">
+            <h6 class="font-display mb-2" style="font-size: 0.95rem;">
+                <i class="bi bi-info-circle text-info-custom me-2"></i>Next Step
+            </h6>
+            <p class="text-muted-custom mb-3" style="font-size: 0.875rem; line-height: 1.6;">
+                Download the corresponding <strong>category-specific templates</strong> from Amazon Seller Central for each ITK listed above. Then proceed to Step 2 to upload them and transfer your data.
+            </p>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('step2_upload') }}" class="btn-accent">
+                    <i class="bi bi-arrow-right-circle me-1"></i> Continue to Step 2
+                </a>
+                <a href="{{ url_for('index') }}" class="btn-ghost">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Start Over
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

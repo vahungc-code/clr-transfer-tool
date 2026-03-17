@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}CLR Transfer Tool — Transfer Complete{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <!-- Breadcrumb -->
+        <ul class="breadcrumb-dark">
+            <li><a href="{{ url_for('index') }}">Upload</a></li>
+            <li><a href="{{ url_for('step1_results') }}">ITK Analysis</a></li>
+            <li class="active">Results</li>
+        </ul>
+
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fw-800" style="font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: 0.25rem;">
+                    Transfer Complete
+                </h2>
+                <p class="text-muted-custom mb-0" style="font-size: 0.85rem;">
+                    <i class="bi bi-file-earmark-spreadsheet text-accent"></i> {{ clr_filename }}
+                </p>
+            </div>
+            <a href="{{ url_for('download_all') }}" class="btn-accent">
+                <i class="bi bi-download me-1"></i> Download All
+            </a>
+        </div>
+
+        <!-- Step indicator -->
+        <div class="d-flex justify-content-center mb-4">
+            <div class="step-indicator">
+                <div class="step-item completed">
+                    <div class="step-number"><i class="bi bi-check"></i></div>
+                    <div class="step-label">Upload CLR</div>
+                </div>
+                <div class="step-line active"></div>
+                <div class="step-item completed">
+                    <div class="step-number"><i class="bi bi-check"></i></div>
+                    <div class="step-label">Upload Templates</div>
+                </div>
+                <div class="step-line active"></div>
+                <div class="step-item active">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Download</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value text-accent">{{ results.total_transferred }}</div>
+                    <div class="stat-label">Products Transferred</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--success);">{{ results.templates_used }}</div>
+                    <div class="stat-label">Templates Filled</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--warning);">{{ results.total_flagged }}</div>
+                    <div class="stat-label">Flagged Products</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--critical);">{{ results.unmatched }}</div>
+                    <div class="stat-label">Unmatched Products</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Per-template results -->
+        {% for tmpl in results.templates %}
+        <div class="card-dark mb-3">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-spreadsheet text-accent"></i>
+                    <h6 class="mb-0 font-display" style="font-size: 0.95rem;">{{ tmpl.filename }}</h6>
+                </div>
+                <a href="{{ url_for('download_file', file_index=tmpl.index) }}" class="btn-outline-accent" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                    <i class="bi bi-download me-1"></i> Download
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-4">
+                        <div class="quick-count">
+                            <div class="quick-count-icon info">
+                                <i class="bi bi-diagram-3"></i>
+                            </div>
+                            <div>
+                                <div class="quick-count-value">{{ tmpl.families }}</div>
+                                <div class="quick-count-label">Families</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="quick-count">
+                            <div class="quick-count-icon warning">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <div>
+                                <div class="quick-count-value">{{ tmpl.standalone }}</div>
+                                <div class="quick-count-label">Standalone</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="quick-count">
+                            <div class="quick-count-icon critical">
+                                <i class="bi bi-flag"></i>
+                            </div>
+                            <div>
+                                <div class="quick-count-value">{{ tmpl.flagged }}</div>
+                                <div class="quick-count-label">Flagged</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Type -->
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="text-dim" style="font-size: 0.8rem; font-weight: 500;">Product Type:</span>
+                    <code>{{ tmpl.product_type }}</code>
+                </div>
+
+                <!-- ITKs matched -->
+                <div class="d-flex align-items-start gap-2">
+                    <span class="text-dim" style="font-size: 0.8rem; font-weight: 500; white-space: nowrap; padding-top: 0.15rem;">ITKs matched:</span>
+                    <div class="d-flex flex-wrap gap-xs">
+                        {% for itk in tmpl.matched_itks %}
+                        <span class="badge-severity badge-success" style="font-size: 0.65rem;">{{ itk }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Flagged details -->
+                {% if tmpl.flag_details %}
+                <div class="mt-3" style="border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                    <p class="text-dim mb-2" style="font-size: 0.8rem; font-weight: 600;">
+                        <i class="bi bi-exclamation-triangle text-warning-custom me-1"></i>Flagged Products
+                    </p>
+                    {% for flag in tmpl.flag_details %}
+                    <div class="d-flex align-items-center gap-2 mb-1" style="font-size: 0.8rem;">
+                        <code style="font-size: 0.75rem;">{{ flag.sku }}</code>
+                        <span class="text-dim">&mdash;</span>
+                        <span class="text-muted-custom">{{ flag.reason }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Unmatched products -->
+        {% if results.unmatched_products %}
+        <div class="card-dark mb-4" style="border-left: 3px solid var(--critical);">
+            <div class="card-header">
+                <h6 class="mb-0 font-display" style="font-size: 0.95rem;">
+                    <i class="bi bi-exclamation-circle text-critical me-2"></i>Unmatched Products ({{ results.unmatched_products | length }})
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Item Type Keyword</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prod in results.unmatched_products[:20] %}
+                        <tr>
+                            <td><code style="font-size: 0.8rem;">{{ prod.sku }}</code></td>
+                            <td style="font-size: 0.825rem;">{{ prod.itk or '(empty)' }}</td>
+                            <td><span class="badge-severity badge-warning">{{ prod.type }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        {% if results.unmatched_products | length > 20 %}
+                        <tr>
+                            <td colspan="3" class="text-dim text-center" style="font-size: 0.8rem;">
+                                ... and {{ results.unmatched_products | length - 20 }} more
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="d-flex justify-content-center gap-2 mb-4">
+            <a href="{{ url_for('download_all') }}" class="btn-accent">
+                <i class="bi bi-download me-1"></i> Download All Templates
+            </a>
+            <a href="{{ url_for('index') }}" class="btn-ghost">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Start Over
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Temp files
+*.tmp
+tmp/
+
+# Font files (not needed for deployment - loaded from Google Fonts CDN)
+FONTs*/
+
+# Root-level logos (copies exist in web/static/images/)
+/OSS*.png
+
+# Spec doc (not needed in deployment)
+CLR_Transfer_Tool_Spec.md

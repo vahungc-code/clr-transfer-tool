@@ -1,38 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}CLR Transfer Tool — Transfer CLR Data to Category Templates{% endblock %}
+{% block title %}CLR Transfer Tool — Identify Your ITKs{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-7 col-xl-6">
         <div class="text-center mb-4" style="margin-top: 2rem;">
             <h1 class="fw-800" style="font-size: 2rem; letter-spacing: -0.03em;">
-                Transfer CLR data to category templates
+                Identify your Item Type Keywords
             </h1>
             <p class="text-muted-custom mt-2" style="font-size: 0.95rem; max-width: 520px; margin: 0 auto;">
-                Upload your Amazon Category Listing Report to identify ITKs and transfer products into the right category-specific templates.
-                <br><span class="text-dim" style="font-size: 0.8rem;">Your file is processed locally and never stored permanently.</span>
+                Upload your Amazon Category Listing Report to see which ITKs your products use — so you know exactly which category-specific templates to download.
+                <br><span class="text-dim" style="font-size: 0.8rem;">Your file is processed securely and never stored permanently.</span>
             </p>
-        </div>
-
-        <!-- Step indicator -->
-        <div class="d-flex justify-content-center mb-4">
-            <div class="step-indicator">
-                <div class="step-item active">
-                    <div class="step-number">1</div>
-                    <div class="step-label">Upload CLR</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step-item">
-                    <div class="step-number">2</div>
-                    <div class="step-label">Upload Templates</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step-item">
-                    <div class="step-number">3</div>
-                    <div class="step-label">Download</div>
-                </div>
-            </div>
         </div>
 
         <div class="card-dark p-4 mb-4">
@@ -55,10 +35,9 @@
         </div>
 
         <div class="d-flex flex-wrap justify-content-center gap-sm mb-4">
-            <span class="feature-pill"><i class="bi bi-diagram-3"></i> ITK Detection</span>
-            <span class="feature-pill"><i class="bi bi-people"></i> Family Grouping</span>
-            <span class="feature-pill"><i class="bi bi-columns-gap"></i> Column Mapping</span>
-            <span class="feature-pill"><i class="bi bi-flag"></i> Mismatch Flagging</span>
+            <span class="feature-pill"><i class="bi bi-tags"></i> ITK Detection</span>
+            <span class="feature-pill"><i class="bi bi-diagram-3"></i> Family Grouping</span>
+            <span class="feature-pill"><i class="bi bi-bar-chart"></i> Product Counts</span>
         </div>
     </div>
 </div>

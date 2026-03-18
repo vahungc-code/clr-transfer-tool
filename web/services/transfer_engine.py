@@ -40,13 +40,59 @@ def parse_template_itks(filepath):
         basename = basename[5:]
     product_type = os.path.splitext(basename)[0]
 
+    # Build the base category slug from the product type name
+    # e.g. HERBAL_SUPPLEMENT -> "herbal supplement" for browse-path matching
+    base_category = product_type.replace('_', ' ').lower()
+    # Also build a hyphenated version: "herbal-supplements" (with plural)
+    base_slug = product_type.replace('_', '-').lower()
+    # Try both singular and plural
+    base_slugs = {base_slug, base_slug + 's'}
+    # Also add space-separated versions for browse path matching
+    base_browse_terms = {base_category, base_category + 's'}
+
+    # Collect all specific alias slugs too
+    alias_slugs = list(aliases.values())
+
+    # Extract the parenthesized slug from each alias key for display
+    # AND extract browse path segments for matching browse-path-only CLR ITKs
+    slug_to_parenthesized = {}
+    browse_path_segments = set()  # unique browse path segments from aliases
+    for display_key, slug in aliases.items():
+        # Extract the part in parentheses from the display key
+        paren_match = re.search(r'\(([^)]+)\)\s*$', display_key)
+        if paren_match:
+            slug_to_parenthesized[slug] = paren_match.group(1)
+            # Extract the browse path (everything before the parenthesized slug)
+            browse_path = display_key[:paren_match.start()].strip()
+        else:
+            slug_to_parenthesized[slug] = slug
+            browse_path = display_key.strip()
+
+        # Store the full browse path and also its last few segments for matching
+        # e.g. "Health & Household > ... > Blended Vitamin & Mineral Supplements"
+        browse_path_lower = browse_path.lower().rstrip(' >')
+        if browse_path_lower:
+            browse_path_segments.add(browse_path_lower)
+            # Also add just the last segment(s) for partial matching
+            parts = [p.strip() for p in browse_path_lower.split('>')]
+            if len(parts) >= 2:
+                # Last 2 segments: "Herbal Supplements > Echinacea"
+                browse_path_segments.add(' > '.join(parts[-2:]))
+            if len(parts) >= 1:
+                # Just the last segment: "Echinacea"
+                browse_path_segments.add(parts[-1])
+
     return {
         'filepath': filepath,
         'filename': basename,
         'product_type': product_type,
         'headers': headers,
-        'aliases': aliases,  # {display_key: slug}
-        'slugs': list(aliases.values()),
+        'aliases': aliases,              # {display_key: slug}
+        'slugs': alias_slugs,            # specific slugs from aliases
+        'base_slugs': base_slugs,        # derived from filename
+        'base_browse_terms': base_browse_terms,  # for browse path matching
+        'browse_path_segments': browse_path_segments,  # from alias keys
+        'slug_to_parenthesized': slug_to_parenthesized,
     }
 
 
@@ -144,21 +190,108 @@ def transfer_data(clr_path, template_paths):
     }
 
 
+def _product_matches_template(clr_itk_value, tmpl):
+    """
+    Check if a CLR product's ITK matches the template.
+
+    Matching strategy (in order):
+    1. Exact slug match: CLR ITK contains one of the template's alias slugs
+       e.g. "echinacea-herbal-supplements" in "Echinacea (echinacea-herbal-supplements)"
+    2. Browse path match: CLR ITK's browse path contains the base category
+       e.g. "Herbal Supplements" in "Health & Household > ... > Herbal Supplements > Mushrooms"
+    3. Slug-in-ITK match: CLR ITK contains the base slug from the filename
+       e.g. "herbal-supplements" in "other-(herbal-supplements)"
+    """
+    if not clr_itk_value:
+        return False
+    itk_lower = str(clr_itk_value).lower().strip()
+
+    # 1. Check specific alias slugs first
+    for slug in tmpl['slugs']:
+        if slug and slug.lower() in itk_lower:
+            return True
+
+    # 2. Check if CLR ITK's browse path matches any alias browse paths
+    # e.g. CLR: "Health & Household > ... > Blended Vitamin & Mineral Supplements"
+    # matches alias browse path from NUTRITIONAL_SUPPLEMENT template
+    for segment in tmpl['browse_path_segments']:
+        if segment in itk_lower:
+            return True
+
+    # 3. Check base browse terms (from filename)
+    # e.g. "herbal supplements" matches "Health & Household > ... > Herbal Supplements > Mushrooms"
+    for term in tmpl['base_browse_terms']:
+        if term in itk_lower:
+            return True
+
+    # 4. Check base slugs (hyphenated form from filename)
+    # e.g. "herbal-supplements" matches "other-(herbal-supplements)"
+    for slug in tmpl['base_slugs']:
+        if slug in itk_lower:
+            return True
+
+    return False
+
+
+def _get_best_matching_slug(clr_itk_value, tmpl):
+    """
+    Return the best matching alias slug for a CLR ITK value.
+    Prefers specific slug matches over base category matches.
+    Returns (slug, is_specific) tuple.
+    """
+    if not clr_itk_value:
+        return None, False
+    itk_lower = str(clr_itk_value).lower().strip()
+
+    # 1. Check specific alias slugs first
+    for slug in tmpl['slugs']:
+        if slug and slug.lower() in itk_lower:
+            return slug, True
+
+    # 2. For browse-path or base-slug matches, return None for slug
+    #    (these don't have a specific alias, just the base category)
+    return None, False
+
+
+def _find_best_itk_display(clr_itk, tmpl):
+    """
+    Find the best ITK display value for a product.
+    Uses the parenthesized slug format: (slug-name)
+
+    Strategy:
+    1. If CLR ITK matches a specific alias slug -> use that alias's parenthesized form
+    2. If CLR ITK only matches the base category -> use the CLR's original ITK
+       (since we can't determine the specific sub-category)
+    """
+    if not clr_itk:
+        return None
+
+    slug, is_specific = _get_best_matching_slug(clr_itk, tmpl)
+
+    if is_specific and slug:
+        # Use the parenthesized slug from the alias
+        paren = tmpl['slug_to_parenthesized'].get(slug)
+        if paren:
+            return paren
+        return slug
+
+    # For base-category matches, keep the original CLR ITK value
+    # The product matches the template but we don't have a specific slug for it
+    return clr_itk
+
+
 def _transfer_to_template(clr_data, tmpl, parent_map, child_families, all_by_sku):
     """Match CLR products to a single template and write the data."""
-    slugs = tmpl['slugs']
-    aliases = tmpl['aliases']
-
     # Find matching children
     matching_children = []
     for c in clr_data['children']:
-        if _product_matches_template(c['itk'], slugs):
+        if _product_matches_template(c['itk'], tmpl):
             matching_children.append(c)
 
     # Find matching standalone
     matching_standalone = []
     for s in clr_data['standalone']:
-        if _product_matches_template(s['itk'], slugs):
+        if _product_matches_template(s['itk'], tmpl):
             matching_standalone.append(s)
 
     # Build family groups from matching children
@@ -195,7 +328,7 @@ def _transfer_to_template(clr_data, tmpl, parent_map, child_families, all_by_sku
         majority_itk = Counter(family_itks).most_common(1)[0][0] if family_itks else None
 
         for child in all_family_children:
-            child_matches = _product_matches_template(child['itk'], slugs)
+            child_matches = _product_matches_template(child['itk'], tmpl)
             flag = None
 
             if not child_matches:
@@ -217,11 +350,15 @@ def _transfer_to_template(clr_data, tmpl, parent_map, child_families, all_by_sku
             matched_skus.add(child['sku'])
 
             if child_matches and child['itk']:
-                matched_itk_set.add(_get_matching_slug(child['itk'], slugs))
+                display = _find_best_itk_display(child['itk'], tmpl)
+                if display:
+                    matched_itk_set.add(display)
 
-        # Also set parent ITK based on majority
+        # Also track parent ITK
         if parent and majority_itk:
-            matched_itk_set.add(_get_matching_slug(majority_itk, slugs))
+            display = _find_best_itk_display(majority_itk, tmpl)
+            if display:
+                matched_itk_set.add(display)
 
     # Process standalone
     for s in matching_standalone:
@@ -232,29 +369,15 @@ def _transfer_to_template(clr_data, tmpl, parent_map, child_families, all_by_sku
         })
         matched_skus.add(s['sku'])
         if s['itk']:
-            matched_itk_set.add(_get_matching_slug(s['itk'], slugs))
-
-    # Build the alias display key lookup
-    slug_to_display = {}
-    for display_key, slug in aliases.items():
-        slug_to_display[slug] = display_key
+            display = _find_best_itk_display(s['itk'], tmpl)
+            if display:
+                matched_itk_set.add(display)
 
     # Now write to the template file
-    output_path = _write_template(
-        clr_data, tmpl, ordered_rows, slug_to_display, matched_itk_set
-    )
+    output_path = _write_template(clr_data, tmpl, ordered_rows)
 
-    # Build matched ITK display names
-    matched_itk_names = []
-    for slug in matched_itk_set:
-        if slug and slug in slug_to_display:
-            # Show truncated version
-            display = slug_to_display[slug]
-            if len(display) > 60:
-                display = '...' + display[-57:]
-            matched_itk_names.append(display)
-        elif slug:
-            matched_itk_names.append(slug)
+    # Build matched ITK display names for UI
+    matched_itk_names = sorted(matched_itk_set)
 
     return {
         'output_path': output_path,
@@ -268,7 +391,7 @@ def _transfer_to_template(clr_data, tmpl, parent_map, child_families, all_by_sku
     }
 
 
-def _write_template(clr_data, tmpl, ordered_rows, slug_to_display, matched_itk_set):
+def _write_template(clr_data, tmpl, ordered_rows):
     """Write product data into the template file."""
     wb = openpyxl.load_workbook(tmpl['filepath'], keep_vba=True)
     ws = wb['Template']
@@ -322,8 +445,7 @@ def _write_template(clr_data, tmpl, ordered_rows, slug_to_display, matched_itk_s
 
         # Override ITK (only for matching products, not flagged ones)
         if tmpl_itk_idx is not None and override_itk:
-            # Find the correct alias display key for this product
-            itk_display = _find_display_itk(product['itk'], tmpl['slugs'], slug_to_display)
+            itk_display = _find_best_itk_display(product['itk'], tmpl)
             if itk_display:
                 ws.cell(row=target_row, column=tmpl_itk_idx + 1, value=itk_display)
 
@@ -339,39 +461,6 @@ def _write_template(clr_data, tmpl, ordered_rows, slug_to_display, matched_itk_s
     wb.close()
 
     return output_path
-
-
-def _product_matches_template(clr_itk_value, template_slugs):
-    """Check if a CLR product's ITK matches any of the template's accepted slugs."""
-    if not clr_itk_value:
-        return False
-    itk_lower = str(clr_itk_value).lower()
-    for slug in template_slugs:
-        if slug and slug.lower() in itk_lower:
-            return True
-    return False
-
-
-def _get_matching_slug(clr_itk_value, template_slugs):
-    """Return the first matching slug for a CLR ITK value."""
-    if not clr_itk_value:
-        return None
-    itk_lower = str(clr_itk_value).lower()
-    for slug in template_slugs:
-        if slug and slug.lower() in itk_lower:
-            return slug
-    return None
-
-
-def _find_display_itk(clr_itk, slugs, slug_to_display):
-    """Find the full display ITK key for a product based on its CLR ITK."""
-    if not clr_itk:
-        return None
-    itk_lower = str(clr_itk).lower()
-    for slug in slugs:
-        if slug and slug.lower() in itk_lower:
-            return slug_to_display.get(slug)
-    return None
 
 
 def _build_ordinal_mapping(clr_headers, template_headers):

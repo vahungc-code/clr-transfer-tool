@@ -90,16 +90,39 @@ def parse_clr(filepath):
 
 
 def extract_itk_summary(clr_data):
-    """Extract unique ITK values with counts, sorted by count descending."""
+    """Extract unique ITK values with counts, sorted by count descending.
+
+    For display, uses the parenthesized slug when available in the ITK value.
+    e.g. "Blended Vitamin & Mineral Supplements (multiple-vitamin-mineral-combinations)"
+         -> display as "(multiple-vitamin-mineral-combinations)"
+    Browse-path ITKs without a slug are shown as-is.
+    """
+    import re
     itk_counter = Counter()
+    # Map raw ITK -> display name
+    itk_display = {}
+
     for p in clr_data['products']:
         itk = p['itk']
         if itk:
             itk_counter[itk] += 1
+            if itk not in itk_display:
+                # Extract parenthesized slug if present
+                paren_match = re.search(r'\(([^)]+)\)\s*$', itk)
+                if paren_match:
+                    itk_display[itk] = f"({paren_match.group(1)})"
+                else:
+                    itk_display[itk] = itk
         else:
             itk_counter['(no ITK)'] += 1
+            itk_display['(no ITK)'] = '(no ITK)'
 
-    return sorted(itk_counter.items(), key=lambda x: x[1], reverse=True)
+    # Return tuples of (display_name, raw_itk, count)
+    result = []
+    for itk, count in sorted(itk_counter.items(), key=lambda x: x[1], reverse=True):
+        result.append((itk_display.get(itk, itk), itk, count))
+
+    return result
 
 
 def _find_columns(headers):

@@ -88,11 +88,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for itk, count in itk_summary %}
+                        {% for display_itk, raw_itk, count in itk_summary %}
                         <tr>
                             <td class="text-dim">{{ loop.index }}</td>
                             <td>
-                                <code style="font-size: 0.8rem;">{{ itk }}</code>
+                                <code style="font-size: 0.8rem;">{{ display_itk }}</code>
+                                {% if display_itk != raw_itk %}
+                                <br><span class="text-dim" style="font-size: 0.7rem;">{{ raw_itk }}</span>
+                                {% endif %}
                             </td>
                             <td style="text-align: right;">
                                 <span class="font-display fw-800">{{ count }}</span>

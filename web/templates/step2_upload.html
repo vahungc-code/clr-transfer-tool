@@ -50,9 +50,9 @@
             </div>
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-sm">
-                    {% for itk, count in itk_summary %}
-                    <span class="itk-chip">
-                        {{ itk }}
+                    {% for display_itk, raw_itk, count in itk_summary %}
+                    <span class="itk-chip" title="{{ raw_itk }}">
+                        {{ display_itk }}
                         <span class="itk-chip-count">{{ count }}</span>
                     </span>
                     {% endfor %}

@@ -5,7 +5,7 @@ from web.services.clr_parser import parse_clr, extract_itk_summary
 from web.services.transfer_engine import parse_template_itks, transfer_data
 
 app = Flask(__name__, template_folder='web/templates', static_folder='web/static')
-app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
+app.secret_key = os.environ.get('SECRET_KEY', 'clr-transfer-tool-dev-key-2026')
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', tempfile.mkdtemp())
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('RAILWAY_ENVIRONMENT') is not None
@@ -61,6 +61,13 @@ def step1_results():
         flash('Please upload a CLR file first.', 'warning')
         return redirect(url_for('index'))
 
+    # Ensure ITK summary is in the new 3-tuple format (display, raw, count)
+    # Old sessions may have 2-tuple format (itk, count)
+    if itk_summary and isinstance(itk_summary[0], (list, tuple)) and len(itk_summary[0]) == 2:
+        # Convert old format to new format
+        itk_summary = [(item[0], item[0], item[1]) for item in itk_summary]
+        session['itk_summary'] = itk_summary
+
     return render_template('step1_results.html',
                            itk_summary=itk_summary,
                            clr_filename=session.get('clr_filename', ''),
@@ -75,9 +82,16 @@ def step2_upload():
     if not session.get('clr_path'):
         flash('Please upload a CLR file first.', 'warning')
         return redirect(url_for('index'))
+
+    itk_summary = session.get('itk_summary', [])
+    # Ensure 3-tuple format
+    if itk_summary and isinstance(itk_summary[0], (list, tuple)) and len(itk_summary[0]) == 2:
+        itk_summary = [(item[0], item[0], item[1]) for item in itk_summary]
+        session['itk_summary'] = itk_summary
+
     return render_template('step2_upload.html',
                            clr_filename=session.get('clr_filename', ''),
-                           itk_summary=session.get('itk_summary', {}))
+                           itk_summary=itk_summary)
 
 
 @app.route('/transfer', methods=['POST'])

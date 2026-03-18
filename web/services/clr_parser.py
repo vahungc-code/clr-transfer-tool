@@ -92,10 +92,13 @@ def parse_clr(filepath):
 def extract_itk_summary(clr_data):
     """Extract unique ITK values with counts, sorted by count descending.
 
-    For display, uses the parenthesized slug when available in the ITK value.
-    e.g. "Blended Vitamin & Mineral Supplements (multiple-vitamin-mineral-combinations)"
-         -> display as "(multiple-vitamin-mineral-combinations)"
-    Browse-path ITKs without a slug are shown as-is.
+    For display, uses the parenthesized slug format:
+    - If ITK already has a slug: "Blended Vitamin... (multiple-vitamin-mineral-combinations)"
+      -> display as "(multiple-vitamin-mineral-combinations)"
+    - If ITK is a browse path: "Health & Household > ... > Herbal Supplements > Mushrooms"
+      -> derive slug from last segment -> display as "(mushrooms)"
+    - Plain slug ITKs like "herbal-supplements" or "pet-herbal-supplements"
+      -> display as "(herbal-supplements)" or "(pet-herbal-supplements)"
     """
     import re
     itk_counter = Counter()
@@ -107,12 +110,7 @@ def extract_itk_summary(clr_data):
         if itk:
             itk_counter[itk] += 1
             if itk not in itk_display:
-                # Extract parenthesized slug if present
-                paren_match = re.search(r'\(([^)]+)\)\s*$', itk)
-                if paren_match:
-                    itk_display[itk] = f"({paren_match.group(1)})"
-                else:
-                    itk_display[itk] = itk
+                itk_display[itk] = _itk_to_slug_display(itk)
         else:
             itk_counter['(no ITK)'] += 1
             itk_display['(no ITK)'] = '(no ITK)'
@@ -123,6 +121,75 @@ def extract_itk_summary(clr_data):
         result.append((itk_display.get(itk, itk), itk, count))
 
     return result
+
+
+def _itk_to_slug_display(itk):
+    """Convert any ITK format to a parenthesized slug display.
+
+    Examples:
+      "Blended Vitamin & Mineral Supplements (multiple-vitamin-mineral-combinations)"
+        -> "(multiple-vitamin-mineral-combinations)"
+      "Health & Household > Vitamins > Herbal Supplements > Mushrooms"
+        -> "(mushrooms)"
+      "Health & Household > Vitamins > Herbal Supplements"
+        -> "(herbal-supplements)"
+      "herbal-supplements"
+        -> "(herbal-supplements)"
+      "Herbal Supplements (herbal-supplements)"
+        -> "(herbal-supplements)"
+      "other-(herbal-supplements)"
+        -> "(herbal-supplements)"
+      "인삼-허브 보충제"  (non-ASCII)
+        -> shown as-is
+    """
+    import re
+    itk = itk.strip()
+
+    # 1. Already has parenthesized slug at the end
+    paren_match = re.search(r'\(([a-z0-9-]+)\)\s*$', itk)
+    if paren_match:
+        return f"({paren_match.group(1)})"
+
+    # 2. Has parenthesized slug embedded (e.g. "other-(herbal-supplements)")
+    embedded_match = re.search(r'\(([a-z0-9-]+)\)', itk)
+    if embedded_match:
+        return f"({embedded_match.group(1)})"
+
+    # 3. Browse path format: "A > B > C > D" -> take last segment, slugify
+    if ' > ' in itk:
+        last_segment = itk.split('>')[-1].strip()
+        slug = _slugify(last_segment)
+        if slug:
+            return f"({slug})"
+        return itk
+
+    # 4. Already looks like a slug (lowercase, hyphens, no spaces)
+    if re.match(r'^[a-z0-9-]+$', itk):
+        return f"({itk})"
+
+    # 5. Plain text name -> slugify
+    slug = _slugify(itk)
+    if slug and slug != itk.lower():
+        return f"({slug})"
+
+    # 6. Fallback (non-ASCII, etc.)
+    return itk
+
+
+def _slugify(text):
+    """Convert text to a URL-friendly slug.
+    'Herbal Supplements' -> 'herbal-supplements'
+    'Blended Vitamin & Mineral Supplements' -> 'blended-vitamin-mineral-supplements'
+    """
+    import re
+    text = text.lower().strip()
+    # Remove & and other special chars
+    text = text.replace('&', '')
+    # Replace spaces and special chars with hyphens
+    text = re.sub(r'[^a-z0-9]+', '-', text)
+    # Remove leading/trailing hyphens and collapse multiples
+    text = re.sub(r'-+', '-', text).strip('-')
+    return text
 
 
 def _find_columns(headers):

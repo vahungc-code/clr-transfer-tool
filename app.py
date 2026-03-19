@@ -104,6 +104,12 @@ def results():
                            total_standalone=session.get('total_standalone', 0))
 
 
+@app.errorhandler(500)
+def internal_error(e):
+    app.logger.error(f'Internal Server Error: {e}')
+    return render_template('error.html', error=str(e)), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     debug = os.environ.get('RAILWAY_ENVIRONMENT') is None

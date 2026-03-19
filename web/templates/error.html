@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}CLR ITK Analyzer — Error{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7 col-xl-6 text-center" style="margin-top: 3rem;">
+        <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: var(--danger);"></i>
+        <h2 class="fw-800 mt-3" style="font-size: 1.5rem;">Something went wrong</h2>
+        <p class="text-muted-custom mt-2" style="font-size: 0.9rem;">
+            {{ error or 'An unexpected error occurred while processing your request.' }}
+        </p>
+        <a href="{{ url_for('index') }}" class="btn-accent mt-3" style="display: inline-block;">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Try Again
+        </a>
+    </div>
+</div>
+{% endblock %}

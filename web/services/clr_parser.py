@@ -9,26 +9,47 @@ from collections import Counter
 def parse_clr(filepath):
     """Parse a CLR file and return structured product data."""
     wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
-    ws = wb['Template']
 
-    # Read headers from Row 4
+    # Find the Template sheet (case-insensitive)
+    sheet_name = None
+    for name in wb.sheetnames:
+        if name.lower() == 'template':
+            sheet_name = name
+            break
+    if not sheet_name:
+        wb.close()
+        raise ValueError(f"No 'Template' sheet found. Available sheets: {', '.join(wb.sheetnames)}")
+    ws = wb[sheet_name]
+
+    # Read all rows upfront (required for read_only mode reliability)
+    all_rows = []
+    for row in ws.iter_rows(values_only=True):
+        all_rows.append(list(row))
+    wb.close()
+
+    if len(all_rows) < 5:
+        raise ValueError("CLR file has fewer than 5 rows — expected headers in row 4 and data starting at row 6.")
+
+    # Read headers from Row 4 (index 3)
     headers = []
-    for cell in ws[4]:
-        headers.append(str(cell.value).strip() if cell.value else None)
+    for val in all_rows[3]:
+        headers.append(str(val).strip() if val else None)
 
-    # Read attribute references from Row 5
+    # Read attribute references from Row 5 (index 4)
     attr_refs = []
-    for cell in ws[5]:
-        attr_refs.append(str(cell.value).strip() if cell.value else None)
+    for val in all_rows[4]:
+        attr_refs.append(str(val).strip() if val else None)
 
     # Find key column indices
     col_map = _find_columns(headers)
 
-    # Read product data starting from Row 6+
-    # Find the actual first data row (skip attribute reference echoes)
+    if 'sku' not in col_map:
+        raise ValueError("Could not find 'SKU' column in CLR headers. Found: " +
+                         ', '.join(h for h in headers if h))
+
+    # Read product data starting from Row 6+ (index 5+)
     products = []
-    for row in ws.iter_rows(min_row=6, values_only=True):
-        row_data = list(row)
+    for row_data in all_rows[5:]:
 
         # Skip empty rows
         sku_idx = col_map.get('sku')
@@ -57,8 +78,6 @@ def parse_clr(filepath):
             'parent_sku': _get_val(row_data, col_map.get('parent_sku')),
         }
         products.append(product)
-
-    wb.close()
 
     # Categorize products
     parents = []

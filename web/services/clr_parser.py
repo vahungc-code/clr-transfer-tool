@@ -47,9 +47,10 @@ def parse_clr(filepath):
         raise ValueError("Could not find 'SKU' column in CLR headers. Found: " +
                          ', '.join(h for h in headers if h))
 
-    # Read product data starting from Row 6+ (index 5+)
+    # Read product data starting from Row 7+ (index 6+)
+    # Row 6 is Amazon's example/sample row, skip it
     products = []
-    for row_data in all_rows[5:]:
+    for row_data in all_rows[6:]:
 
         # Skip empty rows
         sku_idx = col_map.get('sku')
